@@ -4,69 +4,73 @@ import { useDispatch, useSelector } from "react-redux";
 import { loadGames } from "../redux/actions/gamesAction";
 // Components
 import Game from "../components/Game";
+import GameDetail from "../components/GameDetail";
+import DropDown from "../components/DropDown";
 // Styling and Animation
 import styled from "styled-components";
-import { motion } from "framer-motion";
-import GameDetail from "../components/GameDetail";
+import { motion, AnimatePresence, AnimateSharedLayout } from "framer-motion";
+import { fadeIn } from "../animations";
+// Router
+import { useLocation } from "react-router-dom";
 
 function Home() {
+  // Get current location
+  const location = useLocation();
+  const pathId = location.pathname.split("/")[2];
+
+  // Add scrolling when on home page
+  useEffect(() => {
+    if (!pathId) {
+      document.body.style.overflow = "auto";
+    }
+  });
   // Fetch Games
   const dispatch = useDispatch();
   useEffect(() => {
     dispatch(loadGames());
   }, [dispatch]);
-  // State Selector
-  const { popular, newGames, upcoming } = useSelector((state) => state.games);
 
+  // State Selector
+  const { popular, newGames, upcoming, searched } = useSelector((state) => state.games);
+
+  // Dropdown controller
   const options = [
     { type: "Popular", data: popular },
     { type: "Newest", data: newGames },
     { type: "Upcoming", data: upcoming },
+    { type: "Searched", data: searched },
   ];
-  const [isOpen, setIsOpen] = useState(false);
   const [selectedOption, setSelectedOption] = useState(null);
 
-  const toggling = () => setIsOpen(!isOpen);
-
-  const onOptionClicked = (value) => () => {
-    setSelectedOption(value);
-    setIsOpen(false);
-  };
-
   useEffect(() => {
-    if (popular.length > 0) {
+    if (popular.length) {
       setSelectedOption(options[0]);
     }
-  }, [popular]);
+    if (searched.length) {
+      setSelectedOption(options[3]);
+    }
+    // eslint-disable-next-line
+  }, [popular, searched]);
 
   return (
-    <GameList>
-      <GameDetail />
-      <h2>GAMES</h2>
-      <DropDownContainer>
-        <DropDownHeader onClick={toggling}>
-          {selectedOption ? selectedOption.type : "Popular"}
-        </DropDownHeader>
-        {isOpen && (
-          <DropDownListContainer>
-            <DropDownList>
-              {options.map((option) => (
-                <ListItem onClick={onOptionClicked(option)} key={option.type}>
-                  {option.type}
-                </ListItem>
-              ))}
-            </DropDownList>
-          </DropDownListContainer>
-        )}
-      </DropDownContainer>
+    <GameList variants={fadeIn} initial="hidden" animate="show">
       {selectedOption ? (
-        <Games>
-          {selectedOption.data.map((game) => (
-            <Game key={game.id} game={game} />
-          ))}
-        </Games>
+        <AnimateSharedLayout type="crossfade">
+          <AnimatePresence>{pathId && <GameDetail pathId={pathId} />}</AnimatePresence>
+          <h2>{selectedOption.type} Games</h2>
+          <DropDown
+            selectedOption={selectedOption}
+            setSelectedOption={setSelectedOption}
+            options={options}
+          />
+          <Games>
+            {selectedOption.data.map((game) => (
+              <Game key={game.id} game={game} />
+            ))}
+          </Games>
+        </AnimateSharedLayout>
       ) : (
-        <h1>LOADING...</h1>
+        <h1 style={{ textAlign: "center", marginTop: "10rem" }}>LOADING...</h1>
       )}
     </GameList>
   );
@@ -75,7 +79,7 @@ function Home() {
 const GameList = styled(motion.div)`
   padding: 0rem 5rem;
   h2 {
-    padding: 5rem 0rem 1rem;
+    padding: 1rem 0rem;
   }
 `;
 
@@ -85,46 +89,6 @@ const Games = styled(motion.div)`
   grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
   grid-column-gap: 2rem;
   grid-row-gap: 5rem;
-`;
-
-const DropDownContainer = styled("div")`
-  width: 10rem;
-  margin: 1rem 0rem;
-  position: relative;
-  cursor: pointer;
-  font-weight: 500;
-  font-size: 1.3rem;
-  color: #164666;
-  text-align: center;
-`;
-
-const DropDownHeader = styled("div")`
-  padding: 0.5rem 0rem;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-  background: rgba(0, 0, 0, 0.1);
-  &:hover {
-    background: rgba(0, 0, 0, 0.2);
-  }
-`;
-
-const DropDownListContainer = styled("div")``;
-
-const DropDownList = styled("ul")`
-  position: absolute;
-  right: -30rem;
-  top: 0;
-  display: flex;
-  background: #ffffff;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-`;
-
-const ListItem = styled("li")`
-  list-style: none;
-  width: 10rem;
-  padding: 0.5rem 0rem;
-  &:hover {
-    background: rgba(0, 0, 0, 0.1);
-  }
 `;
 
 export default Home;
